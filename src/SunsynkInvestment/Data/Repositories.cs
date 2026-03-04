@@ -26,10 +26,12 @@ public class TariffRepository
 public class EnergyRepository
 {
     private readonly string _connectionString;
+    private readonly int _cacheStaleHours;
 
-    public EnergyRepository(string connectionString)
+    public EnergyRepository(string connectionString, int cacheStaleHours = 24)
     {
         _connectionString = connectionString;
+        _cacheStaleHours = cacheStaleHours;
     }
 
     public async Task<List<MonthlyEnergy>> GetCachedEnergyAsync(int year)
@@ -54,7 +56,7 @@ public class EnergyRepository
             return false; // completed years never go stale
 
         var lastFetch = DateTime.Parse(fetchedAt);
-        return (DateTime.Now - lastFetch).TotalHours > 24;
+        return (DateTime.Now - lastFetch).TotalHours > _cacheStaleHours;
     }
 
     public async Task UpsertMonthlyEnergyAsync(MonthlyEnergy energy)

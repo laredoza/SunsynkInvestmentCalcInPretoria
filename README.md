@@ -9,6 +9,7 @@ A .NET console application that calculates how much money you've saved by genera
 - Caches API data in SQLite to avoid redundant API calls
 - Displays a yearly breakdown of PV generation and savings in Rands
 - Calculates investment payoff timeline based on actual and projected savings
+- Warns when tariff data is missing for fetched energy periods
 
 ## Prerequisites
 
@@ -30,9 +31,12 @@ A .NET console application that calculates how much money you've saved by genera
      "Sunsynk": {
        "Username": "your-email@example.com",
        "Password": "your-sunsynk-password",
-       "PlantId": 308360
+       "PlantId": 0,
+       "ApiBaseUrl": "https://api.sunsynk.net/"
      },
+     "StartYear": 2022,
      "TotalInvestmentAmount": 150000,
+     "CacheStaleHours": 24,
      "Database": {
        "ConnectionString": "Data Source=sunsynk_investment.db"
      }
@@ -44,7 +48,10 @@ A .NET console application that calculates how much money you've saved by genera
    | `Username` | Your Sunsynk Connect email |
    | `Password` | Your Sunsynk Connect password |
    | `PlantId` | Your plant ID (visible in the Sunsynk Connect URL) |
+   | `ApiBaseUrl` | Sunsynk API base URL (default: `https://api.sunsynk.net/`) |
+   | `StartYear` | The first year to fetch energy data for |
    | `TotalInvestmentAmount` | Total cost of your solar installation in Rands. Set to `0` to skip payoff calculation. |
+   | `CacheStaleHours` | Hours before current-year cached data is refreshed (default: `24`) |
 
 ## Usage
 
@@ -56,10 +63,11 @@ dotnet run
 On first run the app will:
 1. Create the SQLite database and seed tariff data
 2. Authenticate with the Sunsynk API
-3. Fetch monthly energy data for each year (2022 onwards)
+3. Fetch monthly energy data for each year (from `StartYear` onwards)
 4. Display the savings report
+5. Warn if any months/years are missing tariff data
 
-Subsequent runs use cached data for completed years. Current year data refreshes after 24 hours.
+Subsequent runs use cached data for completed years. Current year data refreshes after `CacheStaleHours` (default: 24 hours).
 
 ### Refreshing all data
 
@@ -81,7 +89,7 @@ City of Tshwane residential electricity tariffs (excl. VAT) are stored in SQLite
 | 2024/25 | R2.7033 | R3.1637 | R3.4468 | R3.7158 |
 | 2025/26 | R2.9790 | R3.4864 | R3.7983 | R4.0948 |
 
-Financial years run July to June. To add future tariffs, delete the database and update the seed data in `Data/DatabaseInitializer.cs`.
+Financial years run July to June. If the app warns about missing tariff data for a year, add the new rates to the seed data in `Data/DatabaseInitializer.cs` and delete the database to re-seed.
 
 ## Project Structure
 

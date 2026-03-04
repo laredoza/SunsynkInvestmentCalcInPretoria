@@ -15,13 +15,15 @@ config.GetSection("Sunsynk").Bind(sunsynkSettings);
 var totalInvestment = config.GetValue<decimal>("TotalInvestmentAmount", 0);
 var connectionString = config["Database:ConnectionString"]
     ?? "Data Source=sunsynk_investment.db";
+var startYear = config.GetValue<int>("StartYear", 2022);
+var cacheStaleHours = config.GetValue<int>("CacheStaleHours", 24);
 
 // Initialize database
 var dbInit = new DatabaseInitializer(connectionString);
 await dbInit.InitializeAsync();
 
 var tariffRepo = new TariffRepository(connectionString);
-var energyRepo = new EnergyRepository(connectionString);
+var energyRepo = new EnergyRepository(connectionString, cacheStaleHours);
 var calculator = new SavingsCalculator();
 
 // Authenticate with Sunsynk
@@ -43,7 +45,6 @@ catch (Exception ex)
 }
 
 // Fetch data for each year
-var startYear = 2022;
 var currentYear = DateTime.Now.Year;
 var allMonthlyData = new List<(MonthlyEnergy Energy, Tariff Tariff, decimal SavingsRand)>();
 
@@ -76,20 +77,30 @@ for (var year = startYear; year <= currentYear; year++)
         energyData = await energyRepo.GetCachedEnergyAsync(year);
     }
 
+    var missingTariffMonths = new List<string>();
+
     foreach (var energy in energyData)
     {
         var date = new DateTime(energy.Year, energy.Month, 1);
         var tariff = await tariffRepo.GetTariffForDateAsync(date);
         if (tariff == null)
         {
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"  Warning: No tariff found for {date:MMM yyyy}, skipping.");
-            Console.ResetColor();
+            missingTariffMonths.Add(date.ToString("MMM yyyy"));
             continue;
         }
 
         var savingsRand = calculator.CalculateCost(energy.Pv, tariff);
         allMonthlyData.Add((energy, tariff, savingsRand));
+    }
+
+    if (missingTariffMonths.Count > 0)
+    {
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        if (missingTariffMonths.Count == energyData.Count)
+            Console.WriteLine($"  Warning: No tariff data for {year}. Add tariffs in DatabaseInitializer.cs to include this year.");
+        else
+            Console.WriteLine($"  Warning: No tariff found for {string.Join(", ", missingTariffMonths)}, skipping.");
+        Console.ResetColor();
     }
 }
 

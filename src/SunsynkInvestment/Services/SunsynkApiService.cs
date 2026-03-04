@@ -24,7 +24,7 @@ public class SunsynkApiService
     public SunsynkApiService(HttpClient httpClient, SunsynkSettings settings)
     {
         _httpClient = httpClient;
-        _httpClient.BaseAddress = new Uri("https://api.sunsynk.net/");
+        _httpClient.BaseAddress = new Uri(settings.ApiBaseUrl);
         _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
         _settings = settings;
     }

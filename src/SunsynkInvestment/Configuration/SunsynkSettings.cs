@@ -5,4 +5,5 @@ public class SunsynkSettings
     public string Username { get; set; } = "";
     public string Password { get; set; } = "";
     public int PlantId { get; set; }
+    public string ApiBaseUrl { get; set; } = "https://api.sunsynk.net/";
 }
